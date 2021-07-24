@@ -1,0 +1,14 @@
+# depslib dependency file v1.0
+1627148908 source:/home/leroy/Projekte/SmartGarden/main.cpp
+	<iostream>
+	<cstring>
+	<string>
+	<vector>
+	<queue>
+	<sys/types.h>
+	<sys/socket.h>
+	<netinet/in.h>
+	<stdlib.h>
+	<unistd.h>
+	<sstream>
+
