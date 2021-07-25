@@ -14,7 +14,7 @@
 using namespace std;
 
 vector<string> split(char[]);
-void init(int&, struct sockaddr_in&);
+void init(int&, struct sockaddr_in&, socklen_t&);
 
 int main()
 {
@@ -27,7 +27,7 @@ int main()
     socklen_t size;
 
     // init socket
-    init(socket_fd, server_address);
+    init(socket_fd, server_address, size);
 
     //listening
     while(running)
@@ -42,13 +42,23 @@ int main()
             cout << "Error accepting clients" << endl;
             exit(3);
         }
-        //send/recieve
-        recv(client, buffer, buffersize, 0);
-        cout << buffer << endl;
-        send(client, buffer, buffersize, 0);
+        //recieve
+        int requestsize = 1024;
+        char request[requestsize];
+        recv(client, request, requestsize, 0);
+        cout << request << endl;
+
+        //send
+        int responsesize = 1024;
+        char response[responsesize];
+        for(int i = 0; i < responsesize; i++)
+        {
+            response[i] = request[i];
+        }
+        send(client, response, responsesize, 0);
     }
 }
-void init(int& socket_fd, struct sockaddr_in& server_address)
+void init(int& socket_fd, struct sockaddr_in& server_address, socklen_t& size)
 {
     socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(socket_fd < 0)
@@ -59,7 +69,9 @@ void init(int& socket_fd, struct sockaddr_in& server_address)
     server_address.sin_family = AF_INET;
     server_address.sin_addr.s_addr = INADDR_ANY;
     server_address.sin_port = htons(PORT);
-    int binder = bind(socket_fd, (struct sockaddr*)&server_address, sizeof(server_address));
+    size = sizeof(server_address);
+
+    int binder = bind(socket_fd, (struct sockaddr*)&server_address, size);
     if(binder < 0)
     {
         cout << "\nSocket binding failed" << endl;
