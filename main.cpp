@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sstream>
+#include "pump.h"
 #define PORT 2040
 
 using namespace std;

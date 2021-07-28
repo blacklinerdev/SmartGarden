@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1627233288 source:/home/leroy/Projekte/SmartGarden/main.cpp
+1627494283 source:/home/leroy/Projekte/SmartGarden/main.cpp
 	<iostream>
 	<cstring>
 	<string>
@@ -11,4 +11,9 @@
 	<stdlib.h>
 	<unistd.h>
 	<sstream>
+	"help.h"
+
+1627494906 /home/leroy/Projekte/SmartGarden/help.h
+	<sstream>
+	<queue>
 
