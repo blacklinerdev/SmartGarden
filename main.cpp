@@ -16,11 +16,11 @@ using namespace std;
 
 vector<string> split(char[]);
 void init(int&, struct sockaddr_in&, socklen_t&);
+int querry_handler(vector<string>);
 
 int main()
 {
     int socket_fd, client;
-    int portnum = 2040;
     int buffersize = 1024;
     char buffer[buffersize];
     bool running = true;
@@ -47,15 +47,17 @@ int main()
         int requestsize = 1024;
         char request[requestsize];
         recv(client, request, requestsize, 0);
-        cout << request << endl;
+
+        //parse input
+        vector<string> querry;
+        querry = split(request);
+        //handle
+        int result = querry_handler(querry);
 
         //send
         int responsesize = 1024;
         char response[responsesize];
-        for(int i = 0; i < responsesize; i++)
-        {
-            response[i] = request[i];
-        }
+        sprintf(response, "%d", result);
         send(client, response, responsesize, 0);
     }
 }
@@ -82,18 +84,22 @@ void init(int& socket_fd, struct sockaddr_in& server_address, socklen_t& size)
 vector<string> split(char buffer[])
 {
     vector<string> result;
-    int i = 0;
-    for(int j = 0; j < sizeof(buffer); j++)
+    stringstream ss(buffer);
+    string token;
+    while(getline(ss, token, ' '))
     {
-        if(buffer[j] == ' ' || j == sizeof(buffer))
-        {
-            string word;
-            for(i; i < j - 1; i++)
-            {
-                word += buffer[i];
-            }
-            result.push_back(word);
-            i = j + 1;
-        }
+        result.push_back(token);
     }
+    return result;
+}
+int querry_handler(vector<string> querry)
+{
+    string device = querry[0];
+    if(device == "pump")      //fehler
+    {
+        cout << "Device: " << device << endl;
+        return pump::method(querry);
+    }
+    cout << "No Device found: " << device << endl;
+    return -1;
 }

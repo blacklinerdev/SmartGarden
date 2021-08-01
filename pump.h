@@ -4,24 +4,29 @@
 #include <sstream>
 #include <queue>
 
+using namespace std;
 namespace pump
 {
     int off();
     int on(int&);
 
-    int method(char* values[])
+    int method(vector<string> values)
     {
-        if(strcmp(values[1], "off"))
+        if(values[1] == "off")
         {
+            cout << "Method: off" << endl;
             return off();
         }
-        if(strcmp(values[1], "on"))
+        if(values[1] == "on")
         {
+            cout << "Method: on" << endl;
             std::stringstream ss(values[2]);
             int val;
             ss >> val;
             return on(val);
         }
+        cout << "No Method found: " << values[1] << endl;
+        return -1;
     }
 
     int off()
@@ -50,10 +55,11 @@ namespace pump
             }
             return 0;
         }
-        int sec = time * 60;
+        unsigned int sec = time * 60;
         try
         {
             //set gpio on
+            sleep(sec);
         } catch (...)
         {
             return -1;
