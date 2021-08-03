@@ -14,6 +14,10 @@
 
 using namespace std;
 
+// Create a global Pump object using wiringPi pin 0 (GPIO 17).
+// This shouldn't stay as a global, its just the only way I could think of 
+// to implement it now.
+Pump pump = Pump(0);
 vector<string> split(char[]);
 void init(int&, struct sockaddr_in&, socklen_t&);
 int querry_handler(vector<string>);
@@ -98,7 +102,7 @@ int querry_handler(vector<string> querry)
     if(device == "pump")      //fehler
     {
         cout << "Device: " << device << endl;
-        return pump::method(querry);
+        return pump.method(querry);
     }
     cout << "No Device found: " << device << endl;
     return -1;
