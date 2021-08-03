@@ -69,6 +69,8 @@ int Pump::on(int time) {
     unsigned int sec = time * 60;
     try {
         digitalWrite(pin, HIGH);
+        // Using the thread sleep_for function should allow for the 
+        // sleep to be compatible with threads.
         this_thread::sleep_for(std::chrono::seconds(sec));
         off();
     } catch (...) {
