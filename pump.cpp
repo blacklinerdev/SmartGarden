@@ -48,16 +48,17 @@ int Pump::off() {
     try {
 	digitalWrite(pin, LOW);
     } catch(...) {
+        cout << "Pump may not shut off" << endl;
         return -1;
     }
     return 0;
 }
-    
+
 int Pump::on(int time) {
-    
+
     if(time < 0) return -1;
     if(time > 60) time = 60;
-        
+
     else if(time == 0) {
 	try {
 	    digitalWrite(pin, HIGH);
@@ -69,11 +70,12 @@ int Pump::on(int time) {
     unsigned int sec = time * 60;
     try {
         digitalWrite(pin, HIGH);
-        // Using the thread sleep_for function should allow for the 
+        // Using the thread sleep_for function should allow for the
         // sleep to be compatible with threads.
         this_thread::sleep_for(std::chrono::seconds(sec));
         off();
     } catch (...) {
+        off();      //safety shut off if exception is thrown in try block
 	return -1;
     }
     return 0;
