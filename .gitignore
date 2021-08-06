@@ -1,2 +1,5 @@
 
 .vscode/settings.json
+build
+test
+CMakeLists.txt

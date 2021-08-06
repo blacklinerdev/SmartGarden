@@ -25,28 +25,11 @@ Pump::Pump(int pumpPin) {
     pinMode(pin, OUTPUT);
 }
 
-int Pump::method(vector<string> values) {
-    
-    if(values[1] == "off") {
-	cout << "Method: off" << endl;
-	return off();
-    }
-    
-    if(values[1] == "on") {
-	cout << "Method: on" << endl;
-        stringstream ss(values[2]);
-        int val;
-        ss >> val;
-        return on(val);
-    }
-    
-    cout << "No Method found: " << values[1] << endl;
-    return -1;
-}
-
 int Pump::off() {
     try {
-	digitalWrite(pin, LOW);
+        digitalWrite(pin, LOW);
+        on_flag = 0;
+        time_to_run = 0;
     } catch(...) {
         cout << "Pump may not shut off" << endl;
         return -1;
@@ -54,29 +37,139 @@ int Pump::off() {
     return 0;
 }
 
-int Pump::on(int time) {
+int Pump::on() {
 
-    if(time < 0) return -1;
-    if(time > 60) time = 60;
-
-    else if(time == 0) {
-	try {
-	    digitalWrite(pin, HIGH);
-        }catch(...) {
-            return -1;
-        }
-        return 0;
-    }
-    unsigned int sec = time * 60;
     try {
-        digitalWrite(pin, HIGH);
-        // Using the thread sleep_for function should allow for the
-        // sleep to be compatible with threads.
-        this_thread::sleep_for(std::chrono::seconds(sec));
-        off();
-    } catch (...) {
-        off();      //safety shut off if exception is thrown in try block
-	return -1;
+	    digitalWrite(pin, HIGH);
+        on_flag = 1;
+    }catch(...) {
+        return -1;
     }
+return 0;
+}
+
+bool Pump::is_on() {
+    return on_flag;
+}
+
+void Pump::set_run_time(unsigned int seconds_to_run) {
+    /* Having a seperate set_run_time method allows for seperating the 
+     * way in which timed and non timed pump runs are handled. In 
+     * conjuction with the update method, a timed run can be set up by 
+     * setting the required run time for the pump using this method, 
+     * turning the pump on with the on() method, and then continuosly 
+     * calling the update method on the pump.
+     */
+    time_to_run = seconds_to_run;
+}
+
+void Pump::update() {
+    /* The pump update function is used by the pump manager for manging 
+     * pumping of predefined duration. If the pump is set to run for a 
+     * predetermined length of time then this function will need to be 
+     * called continuously in order to achieve the desired functionality.
+     */
+    unsigned int pump_has_been_running_for;
+    if (is_on_timed() && has_reached_or_exceeded_time_to_run()) {
+        off();
+    }
+}
+
+bool Pump::is_on_timed() {
+    return is_on() && time_to_run != 0;
+}
+
+bool Pump::has_reached_or_exceeded_time_to_run() {
     return 0;
+}
+
+unsigned int Pump::get_running_time(){
+    return 0;
+}
+
+
+void PumpOn::execute(shared_ptr <Pump> pump) {
+    pump->on();
+}
+
+
+void PumpOff::execute(shared_ptr <Pump> pump) {
+    pump->off();
+}
+
+
+PumpOnTimed::PumpOnTimed(unsigned int pumpTime) : PumpCommand() {
+    /* All values of pumpTime from 1 to 60 (inclusive) can be excepted. 
+     * Negative time values make not sense and will cause and error, 
+     * any time over 60 will be capped at sixty. Entering zero will also
+     * cause and error since running the pump for zero time is the same 
+     * as not running the pump.
+     */
+    if (pumpTime > 60) {
+        pump_time = 60;
+    } else if (pumpTime <= 0) {
+        // Not implemented, but should throw an error.
+    } else {
+        pump_time = pumpTime;
+    }
+    
+}
+
+void PumpOnTimed::execute(shared_ptr <Pump> pump) {
+    pump->set_run_time(pump_time);
+    pump->on();
+}
+
+
+PumpCommandQueue::PumpCommandQueue() {
+    mtx = make_shared<mutex>();
+    cv = make_shared<condition_variable>();
+}
+
+void PumpCommandQueue::push(shared_ptr<PumpCommand> command) {
+    commands.push(command);
+}
+
+shared_ptr<PumpCommand> PumpCommandQueue::pop() {
+    shared_ptr<PumpCommand> pump_command = commands.front();
+    commands.pop();
+    return pump_command;
+}
+
+bool PumpCommandQueue::is_empty() {
+    return commands.empty();
+}
+
+PumpManager::PumpManager(shared_ptr<PumpCommandQueue> commandQueue, shared_ptr<Pump> pump_to_manage) {
+    command_queue = commandQueue;
+    pump = pump_to_manage;
+}
+
+void PumpManager::task() {
+    /* The pump management task checks the command queue for new commands, 
+     * executes them and will contiously update the pump.
+     */
+     
+     shared_ptr<PumpCommand> pump_command; 
+     
+     if (!command_queue->is_empty()) {
+         pump_command = command_queue->pop();
+         pump_command->execute(pump);
+     }
+     pump->update();
+}
+
+void PumpManager::cont_task() {
+    int check = 1;
+    
+    shared_ptr<PumpCommand> pump_command; 
+    
+    while(check) {
+        if (!command_queue->is_empty()) {
+            pump_command = command_queue->pop();
+            pump_command->execute(pump);
+        }
+        pump->update();
+        this_thread::sleep_for(chrono::milliseconds(500));
+    }
 }

@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sstream>
+#include <memory>
 #include "pump.h"
 #define PORT 2040
 
@@ -20,7 +21,7 @@ using namespace std;
 Pump pump = Pump(0);
 vector<string> split(char[]);
 void init(int&, struct sockaddr_in&, socklen_t&);
-int querry_handler(vector<string>);
+int querry_handler(vector<string>, shared_ptr<PumpCommandQueue> pump_command_queue);
 
 int main()
 {
@@ -30,6 +31,7 @@ int main()
     bool running = true;
     struct sockaddr_in server_address;
     socklen_t size;
+    shared_ptr<PumpCommandQueue> pump_command_queue = make_shared<PumpCommandQueue>();
 
     // init socket
     init(socket_fd, server_address, size);
@@ -56,8 +58,13 @@ int main()
         vector<string> querry;
         querry = split(request);
         //handle
-        int result = querry_handler(querry);
-
+        int result = querry_handler(querry, pump_command_queue);
+        // a possible way to handle the thread would be:
+        //  thread querry_thread(&querry_handler, querry)
+        // However, the way I think this loop is working it would create 
+        // a new thread every loop which is undesirable, I'm also not 
+        // sure how to return from the thread.
+    
         //send
         int responsesize = 1024;
         char response[responsesize];
@@ -65,6 +72,9 @@ int main()
         send(client, response, responsesize, 0);
     }
 }
+
+    
+    
 void init(int& socket_fd, struct sockaddr_in& server_address, socklen_t& size)
 {
     socket_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -96,13 +106,31 @@ vector<string> split(char buffer[])
     }
     return result;
 }
-int querry_handler(vector<string> querry)
+
+int querry_handler(vector<string> querry, shared_ptr<PumpCommandQueue> pump_command_queue)
 {
     string device = querry[0];
     if(device == "pump")      //fehler
     {
         cout << "Device: " << device << endl;
-        return pump.method(querry);
+        
+        if (querry[1] == "on") {
+            
+            stringstream ss(querry[2]);
+            int time_to_run_pump;
+            ss >> time_to_run_pump;
+            
+            if (time_to_run_pump == 0) {
+                pump_command_queue->push(make_shared<PumpOn>());
+            } else if (time_to_run_pump > 0) {
+                pump_command_queue->push(make_shared<PumpOnTimed>(time_to_run_pump));
+            }
+        } else if (querry[1] == "off") {
+            pump_command_queue->push(make_shared<PumpOff>());
+        } else {
+            return -1;
+        }
+        return 0;
     }
     cout << "No Device found: " << device << endl;
     return -1;
