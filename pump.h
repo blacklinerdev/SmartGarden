@@ -10,6 +10,7 @@
 #include <thread>
 #include <chrono>
 #include <condition_variable>
+#include <ctime>
 
 using namespace std;
 
@@ -18,7 +19,7 @@ class Pump {
     private:
         int pin;
         bool on_flag = 0;
-        unsigned int running_since;
+        time_t running_since;
         unsigned int time_to_run = 0;
         bool is_on_timed();
         unsigned int get_running_time();
@@ -84,6 +85,7 @@ class PumpManager {
     public:
         PumpManager(shared_ptr<PumpCommandQueue> commandQueue, shared_ptr<Pump> pump_to_manage);
         void task();
-        void cont_task();
+        void cont_task(shared_ptr<bool> exit_signal);
 };
+
 #endif // PUMP_H_

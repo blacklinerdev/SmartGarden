@@ -30,6 +30,7 @@ int Pump::off() {
         digitalWrite(pin, LOW);
         on_flag = 0;
         time_to_run = 0;
+        running_since = 0;
     } catch(...) {
         cout << "Pump may not shut off" << endl;
         return -1;
@@ -42,6 +43,7 @@ int Pump::on() {
     try {
 	    digitalWrite(pin, HIGH);
         on_flag = 1;
+        running_since = time(0);
     }catch(...) {
         return -1;
     }
@@ -80,11 +82,13 @@ bool Pump::is_on_timed() {
 }
 
 bool Pump::has_reached_or_exceeded_time_to_run() {
-    return 0;
+    return get_running_time() >= time_to_run;
 }
 
 unsigned int Pump::get_running_time(){
-    return 0;
+    // Returns the number of seconds since the pump was turned on.
+    unsigned int running_time = time(0) - running_since;
+    return running_time;
 }
 
 
@@ -127,12 +131,16 @@ PumpCommandQueue::PumpCommandQueue() {
 }
 
 void PumpCommandQueue::push(shared_ptr<PumpCommand> command) {
+    mtx->lock();
     commands.push(command);
+    mtx->unlock();
 }
 
 shared_ptr<PumpCommand> PumpCommandQueue::pop() {
+    mtx->lock();
     shared_ptr<PumpCommand> pump_command = commands.front();
     commands.pop();
+    mtx->unlock();
     return pump_command;
 }
 
@@ -159,17 +167,29 @@ void PumpManager::task() {
      pump->update();
 }
 
-void PumpManager::cont_task() {
-    int check = 1;
-    
+void PumpManager::cont_task(shared_ptr<bool> exit_signal) {
+    /* This cont_task is designed to run in its own thread, where it can 
+     * manage the pump. This thread will be created by running:
+     * 
+     *      std::thread manager_thread(&PumpManager::cont_task, &manager, exit_signal);
+     * 
+     * The exit signal is a pointer to a boolean that ends the task when
+     * it is set to true. The task checks the command queue, executes 
+     * tasks, and updates the pump twice per second. Thus pump times 
+     * should be precise to withing one second of the requests pumping 
+     * time.
+     */
     shared_ptr<PumpCommand> pump_command; 
     
-    while(check) {
+    while(!*exit_signal) {
         if (!command_queue->is_empty()) {
             pump_command = command_queue->pop();
             pump_command->execute(pump);
         }
         pump->update();
-        this_thread::sleep_for(chrono::milliseconds(500));
+        if (command_queue->is_empty()) {
+            this_thread::sleep_for(chrono::milliseconds(500));
+        } else {
+        }
     }
 }
