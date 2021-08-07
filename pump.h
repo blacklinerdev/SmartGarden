@@ -137,28 +137,20 @@ class PumpOnTimed : public PumpCommand {
 class PumpCommandQueue {
     
     private:
-        shared_ptr<mutex> mtx;
-        shared_ptr<condition_variable> cv;
+        mutex mtx;
+        condition_variable cv;
         queue <shared_ptr<PumpCommand>> commands;
 
     public:
-        PumpCommandQueue();
+        PumpCommandQueue() = default;
+        PumpCommandQueue(const PumpCommandQueue&) = delete; // This disables copying
+        PumpCommandQueue& operator=(const PumpCommandQueue&) = delete; // This disables assignment
         void push(shared_ptr<PumpCommand> command);
         shared_ptr<PumpCommand> pop();
         shared_ptr<PumpCommand> dequeue();
         bool is_empty();
 };
 
-class PumpManager {
-
-    private:
-        shared_ptr<PumpCommandQueue> command_queue;
-        shared_ptr<Pump> pump;
-
-    public:
-        PumpManager(shared_ptr<PumpCommandQueue> commandQueue, shared_ptr<Pump> pump_to_manage);
-        void task();
-        void cont_task(shared_ptr<bool> exit_signal);
-};
+void PumpManagementTask(PumpCommandQueue& command_queue, shared_ptr<Pump> pump, shared_ptr<bool> exit_signal);
 
 #endif // PUMP_H_

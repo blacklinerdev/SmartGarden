@@ -1,5 +1,65 @@
 #include "pump.h"
 
+
+/*
+Details for the next commit.
+
+Change implementation details for PumpCommandQueue
+
+The pump command queue is designed to be a thread safe queue for sending
+commands to a pump management task that is running in a seperate thread
+from where the commands originate.
+
+I have been researching how to implement such a queue, and previous 
+versions of this code contained some implementation of what I had 
+initially learnt. However, much of this was wrong and as a result some 
+changes have been made.
+
+## Changes to PumpCommandQueue
+
+The mutex and condition variable (that are private members of the 
+PumpCommandQueue have been changed from std::shared_ptr to variables. 
+This matches pretty much every implementation of thread safe queues that 
+I have seen on the net. The reason why these were made into shared_ptr 
+in the first place was because the queue (once constructed) needs to be 
+passed into the function that runs in the pump management thread. 
+However, in my further research I have found that this can be done by 
+passing a std::ref of the queue instead. Unfourtunatly, this has caused 
+another problems that will be explained below, related to initialising 
+the PumpManager class (that now owns a reference to a PumpCommandQueue).
+ 
+The following three methods have been added to the PumpCommandQueue:
+
+    PumpCommandQueue() = default;
+    PumpCommandQueue(const PumpCommandQueue&) = delete; // This disables copying
+    PumpCommandQueue& operator=(const PumpCommandQueue&) = delete; // This disables assignment
+
+In addition the explicitly defined constructor for this class has been 
+removed from pump.cpp. This had to be removed, otherwise the following
+error would result:
+
+    error: definition of explicitly-defaulted ‘PumpCommandQueue::PumpCommandQueue()’
+
+The final change to the PumpManagementQueue is that called to mtx->lock 
+and mtx->unlock have, been commented out. This was done for two reasons:
+1) the mutex is no longer a pointer and thus the syntax is wrong, and 
+2) I am farily confident that this implementation was wrong anyway. I 
+decided that the tbest thing I could do was to get queue refactored in a 
+way that could build for now and then worry about implementing the 
+thread safe features later.
+
+## Deletion of PumpManager class
+
+I wasn't sure how to solve the problem of initialising the reference in
+PumpManager. So, instead, I have removed this class and replace the 
+PumpManager with PumpManagementTask, which is just a function:
+
+    void PumpManagementTask(PumpCommandQueue& command_queue, shared_ptr<Pump> pump, shared_ptr<bool> exit_signal)
+
+Using this, and changing all of the testing code to use this function to
+run in the pump management thread instead of the PumpManager, allow the
+build to complete.
+*/
 using namespace std;
 
 Pump::Pump(int pumpPin) {
@@ -125,22 +185,22 @@ void PumpOnTimed::execute(shared_ptr <Pump> pump) {
 }
 
 
-PumpCommandQueue::PumpCommandQueue() {
-    mtx = make_shared<mutex>();
-    cv = make_shared<condition_variable>();
-}
-
+// In the below two methods I have commented out the mutex lock and 
+// unlock method calls. These are no longer supposed to be method calls,
+// but I am not sure that I have implemented them properly. So, instead 
+// of changing the "->" to a "." I have just decided to comment them out
+// for now.
 void PumpCommandQueue::push(shared_ptr<PumpCommand> command) {
-    mtx->lock();
+    //mtx->lock();
     commands.push(command);
-    mtx->unlock();
+    //mtx->unlock();
 }
 
 shared_ptr<PumpCommand> PumpCommandQueue::pop() {
-    mtx->lock();
+    //mtx->lock();
     shared_ptr<PumpCommand> pump_command = commands.front();
     commands.pop();
-    mtx->unlock();
+    //mtx->unlock();
     return pump_command;
 }
 
@@ -148,30 +208,13 @@ bool PumpCommandQueue::is_empty() {
     return commands.empty();
 }
 
-PumpManager::PumpManager(shared_ptr<PumpCommandQueue> commandQueue, shared_ptr<Pump> pump_to_manage) {
-    command_queue = commandQueue;
-    pump = pump_to_manage;
-}
 
-void PumpManager::task() {
-    /* The pump management task checks the command queue for new commands, 
-     * executes them and will contiously update the pump.
-     */
-     
-     shared_ptr<PumpCommand> pump_command; 
-     
-     if (!command_queue->is_empty()) {
-         pump_command = command_queue->pop();
-         pump_command->execute(pump);
-     }
-     pump->update();
-}
-
-void PumpManager::cont_task(shared_ptr<bool> exit_signal) {
-    /* This cont_task is designed to run in its own thread, where it can 
-     * manage the pump. This thread will be created by running:
+void PumpManagementTask(PumpCommandQueue& command_queue, shared_ptr<Pump> pump, shared_ptr<bool> exit_signal){
+    /* This PumpManagementTask is designed to run in its own thread, 
+     * where it can manage the pump. This thread will be created by 
+     * running:
      * 
-     *      std::thread manager_thread(&PumpManager::cont_task, &manager, exit_signal);
+     *      std::thread manager_thread(std::bind(PumpManagementTask, std::ref(command_queue), pump_ptr, exit_signal));
      * 
      * The exit signal is a pointer to a boolean that ends the task when
      * it is set to true. The task checks the command queue, executes 
@@ -182,14 +225,15 @@ void PumpManager::cont_task(shared_ptr<bool> exit_signal) {
     shared_ptr<PumpCommand> pump_command; 
     
     while(!*exit_signal) {
-        if (!command_queue->is_empty()) {
-            pump_command = command_queue->pop();
+        if (!command_queue.is_empty()) {
+            pump_command = command_queue.pop();
             pump_command->execute(pump);
         }
         pump->update();
-        if (command_queue->is_empty()) {
+        if (command_queue.is_empty()) {
             this_thread::sleep_for(chrono::milliseconds(500));
         } else {
         }
     }
+
 }
