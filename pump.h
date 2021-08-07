@@ -34,6 +34,35 @@ class Pump {
         void update();
 };
 
+
+// PumpCommand follow a modification of the GOF command pattern for 
+// sending commands to the pump. Three commands are implemented, these 
+// are:
+//
+//      1) PumpOn() - Turns the pump on indefinitely.
+//      2) PumpOff() - Turns the pump off indefinitely.
+//      3) PumpOnTimed(unsigned int pump_time) - Turns the pump on for 
+//          the number of minutes specified by pump_time (minimum times 
+//          is 1 minute, maximum time is 60 minutes).
+//
+// Unlike the GOF command pattern, the pump on which to execute the 
+// command is not bound to the command when it is constructed. Instead, 
+// the pump is provided in the arguement to the execute command by the 
+// invoker.
+//
+// Example:
+//
+//      // Create a pump and then create a command to turn it on for 5 
+//      // minutes:
+//      std::shared_ptr<Pump> pump = std:make_shared<Pump>(0);
+//      PumpOnTimed command_on_five_mins = PumpOnTimed(5);
+//      
+//      // Now use the command to turn the pump on for five mins:
+//      command_on_five_mins.execute(pump);
+//
+// Remember: in the above example, in order to ensure the pump runs for 
+// 5 mins will require constant, regular calling of the pump's `update` 
+// method.
 class PumpCommand {
     public:
         virtual ~PumpCommand() {};
