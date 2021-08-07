@@ -14,6 +14,38 @@
 
 using namespace std;
 
+// Pump allows for the control of a single pump. Allows for the pump to 
+// be turned on and off. The pump must be connected to one of the GPIO 
+// pins of the Raspberry Pi, and the pin number of this pin must be 
+// provided to the constructor following the wiringPi pin numbering 
+// scheme. Details of this pin numbering scheme can be found here:
+//
+//      projects.drogan.net/raspberry-pi/wiringpi/pins/ 
+//
+// Example:
+//      
+//      // Create a pump object to control a pump that is connected to 
+//      // wiringPi pin 0 (GPIO 17):
+//      Pump pump = Pump(0);
+//
+//      // Now set the pump to run for 30 seconds and turn it on:
+//      pump.set_run_time(30);
+//      pump.on();
+//
+//      // Now we must call the update() method regularly:
+//      while( ... ) {
+//          
+//          ...
+//          
+//          pump.update();
+//          
+//          // sleep for a bit (~500 ms)
+//
+//      }
+//
+// The pump will track the ammount of time has been running and turn 
+// itself off after the requested 30 seconds, as long as the update() 
+// method is called on it regularly.      
 class Pump {
     
     private:
