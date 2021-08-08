@@ -174,7 +174,7 @@ void PumpManagementTask(PumpCommandQueue& command_queue, shared_ptr<Pump> pump, 
      * The exit signal is a pointer to a boolean that ends the task when
      * it is set to true. The task checks the command queue, executes 
      * tasks, and updates the pump twice per second. Thus pump times 
-     * should be precise to withing one second of the requests pumping 
+     * should be precise to within one second of the requested pumping 
      * time.
      */
     shared_ptr<PumpCommand> pump_command; 
