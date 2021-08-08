@@ -1,65 +1,5 @@
 #include "pump.h"
 
-
-/*
-Details for the next commit.
-
-Change implementation details for PumpCommandQueue
-
-The pump command queue is designed to be a thread safe queue for sending
-commands to a pump management task that is running in a seperate thread
-from where the commands originate.
-
-I have been researching how to implement such a queue, and previous 
-versions of this code contained some implementation of what I had 
-initially learnt. However, much of this was wrong and as a result some 
-changes have been made.
-
-## Changes to PumpCommandQueue
-
-The mutex and condition variable (that are private members of the 
-PumpCommandQueue have been changed from std::shared_ptr to variables. 
-This matches pretty much every implementation of thread safe queues that 
-I have seen on the net. The reason why these were made into shared_ptr 
-in the first place was because the queue (once constructed) needs to be 
-passed into the function that runs in the pump management thread. 
-However, in my further research I have found that this can be done by 
-passing a std::ref of the queue instead. Unfourtunatly, this has caused 
-another problems that will be explained below, related to initialising 
-the PumpManager class (that now owns a reference to a PumpCommandQueue).
- 
-The following three methods have been added to the PumpCommandQueue:
-
-    PumpCommandQueue() = default;
-    PumpCommandQueue(const PumpCommandQueue&) = delete; // This disables copying
-    PumpCommandQueue& operator=(const PumpCommandQueue&) = delete; // This disables assignment
-
-In addition the explicitly defined constructor for this class has been 
-removed from pump.cpp. This had to be removed, otherwise the following
-error would result:
-
-    error: definition of explicitly-defaulted ‘PumpCommandQueue::PumpCommandQueue()’
-
-The final change to the PumpManagementQueue is that called to mtx->lock 
-and mtx->unlock have, been commented out. This was done for two reasons:
-1) the mutex is no longer a pointer and thus the syntax is wrong, and 
-2) I am farily confident that this implementation was wrong anyway. I 
-decided that the tbest thing I could do was to get queue refactored in a 
-way that could build for now and then worry about implementing the 
-thread safe features later.
-
-## Deletion of PumpManager class
-
-I wasn't sure how to solve the problem of initialising the reference in
-PumpManager. So, instead, I have removed this class and replace the 
-PumpManager with PumpManagementTask, which is just a function:
-
-    void PumpManagementTask(PumpCommandQueue& command_queue, shared_ptr<Pump> pump, shared_ptr<bool> exit_signal)
-
-Using this, and changing all of the testing code to use this function to
-run in the pump management thread instead of the PumpManager, allow the
-build to complete.
-*/
 using namespace std;
 
 Pump::Pump(int pumpPin) {
@@ -185,27 +125,42 @@ void PumpOnTimed::execute(shared_ptr <Pump> pump) {
 }
 
 
-// In the below two methods I have commented out the mutex lock and 
-// unlock method calls. These are no longer supposed to be method calls,
-// but I am not sure that I have implemented them properly. So, instead 
-// of changing the "->" to a "." I have just decided to comment them out
-// for now.
 void PumpCommandQueue::push(shared_ptr<PumpCommand> command) {
-    //mtx->lock();
+    std::unique_lock<std::mutex> mutex_lock(mtx);
     commands.push(command);
-    //mtx->unlock();
+    mutex_lock.unlock();
+    cv.notify_one();
 }
 
 shared_ptr<PumpCommand> PumpCommandQueue::pop() {
-    //mtx->lock();
+    // Create a  lock guard using std::unique_lock. This is safer than 
+    // just locking the mutex directly, as the lock guard unlocks the 
+    // mutex automatically when it is destoyed. The loack guard is 
+    // created using the mutex (mtx) that is owned by the 
+    // PumpCommandQueue class.
+    std::unique_lock<std::mutex> mutex_lock(mtx);
+    
+    // Blocks the calling thread, until there is something in the queue. 
+    // This may cause problems in the case of pump management task, 
+    // since blocking the thread may interfere with updating the pump on
+    // timed runs. 
+    //
+    // Leaving this in until it can be tested.
+    //
+    while (commands.empty()) {
+        cv.wait(mutex_lock);
+    }
     shared_ptr<PumpCommand> pump_command = commands.front();
     commands.pop();
-    //mtx->unlock();
+    mutex_lock.unlock();
     return pump_command;
 }
 
 bool PumpCommandQueue::is_empty() {
-    return commands.empty();
+    std::unique_lock<std::mutex> mutex_lock(mtx);
+    bool empty_flag = commands.empty();
+    mutex_lock.unlock();
+    return empty_flag;
 }
 
 

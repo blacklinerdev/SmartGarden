@@ -121,19 +121,19 @@ class PumpOnTimed : public PumpCommand {
 };
 
 
-// PumpCommmandQueue is intended to be a thread safe queue for sending 
-// commands to the pump when it is running in a separate thread.
+// PumpCommmandQueue is a thread safe queue for sending commands to the 
+// pump when it is running in a separate thread.
 //
 // Example:
 // 
-//      // Create a shared_ptr to the queue (this can be sent to the 
+//      // Create a queue (this can be sent, using std::ref, to the 
 //      // thread in which the pump is running.)
-//      std::shared_ptr<PumpCommandQueue> command_queue = std::make_shared<PumpCommandQueue>();
+//      PumpCommandQueue command_queue;
 //            
 //      // Create a PumpCommand and send it to the queue, for example, 
 //      // we can command the pump to turn off:
 //      std::shared_ptr<PumpCommand> command = std::make_shared<PumpOff>();
-//      command_queue->push(command);
+//      command_queue.push(command);
 class PumpCommandQueue {
     
     private:
