@@ -10,18 +10,16 @@
 #include <unistd.h>
 #include <sstream>
 #include <memory>
+#include <functional>
+#include <thread>
 #include "pump.h"
 #define PORT 2040
 
 using namespace std;
 
-// Create a global Pump object using wiringPi pin 0 (GPIO 17).
-// This shouldn't stay as a global, its just the only way I could think of 
-// to implement it now.
-Pump pump = Pump(0);
 vector<string> split(char[]);
 void init(int&, struct sockaddr_in&, socklen_t&);
-int querry_handler(vector<string>, shared_ptr<PumpCommandQueue> pump_command_queue);
+int querry_handler(vector<string>, PumpCommandQueue& pump_command_queue);
 
 int main()
 {
@@ -31,8 +29,14 @@ int main()
     bool running = true;
     struct sockaddr_in server_address;
     socklen_t size;
-    shared_ptr<PumpCommandQueue> pump_command_queue = make_shared<PumpCommandQueue>();
-
+    PumpCommandQueue pump_command_queue;
+    
+    // Create Pump object using wiringPi pin 0 (GPIO 17).
+    std:shared_ptr<Pump> pump_ptr = std::make_shared<Pump>(0); 
+    std::shared_ptr<bool> exit_signal = std::make_shared<bool>(0);
+    
+    thread pump_management_thread(std::bind(PumpManagementTask, std::ref(pump_command_queue), pump_ptr, exit_signal));
+    
     // init socket
     init(socket_fd, server_address, size);
 
@@ -58,12 +62,7 @@ int main()
         vector<string> querry;
         querry = split(request);
         //handle
-        int result = querry_handler(querry, pump_command_queue);
-        // a possible way to handle the thread would be:
-        //  thread querry_thread(&querry_handler, querry)
-        // However, the way I think this loop is working it would create 
-        // a new thread every loop which is undesirable, I'm also not 
-        // sure how to return from the thread.
+        int result = querry_handler(querry, std::ref(pump_command_queue));
     
         //send
         int responsesize = 1024;
@@ -71,6 +70,8 @@ int main()
         sprintf(response, "%d", result);
         send(client, response, responsesize, 0);
     }
+    *exit_signal = 1;
+    pump_management_thread.join();
 }
 
     
@@ -107,7 +108,7 @@ vector<string> split(char buffer[])
     return result;
 }
 
-int querry_handler(vector<string> querry, shared_ptr<PumpCommandQueue> pump_command_queue)
+int querry_handler(vector<string> querry, PumpCommandQueue& pump_command_queue)
 {
     string device = querry[0];
     if(device == "pump")      //fehler
@@ -121,12 +122,12 @@ int querry_handler(vector<string> querry, shared_ptr<PumpCommandQueue> pump_comm
             ss >> time_to_run_pump;
             
             if (time_to_run_pump == 0) {
-                pump_command_queue->push(make_shared<PumpOn>());
+                pump_command_queue.push(make_shared<PumpOn>());
             } else if (time_to_run_pump > 0) {
-                pump_command_queue->push(make_shared<PumpOnTimed>(time_to_run_pump));
+                pump_command_queue.push(make_shared<PumpOnTimed>(time_to_run_pump));
             }
         } else if (querry[1] == "off") {
-            pump_command_queue->push(make_shared<PumpOff>());
+            pump_command_queue.push(make_shared<PumpOff>());
         } else {
             return -1;
         }
