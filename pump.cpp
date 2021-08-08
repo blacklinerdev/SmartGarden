@@ -41,10 +41,10 @@ int Pump::off() {
 int Pump::on() {
 
     try {
-	    digitalWrite(pin, HIGH);
+        digitalWrite(pin, HIGH);
         on_flag = 1;
         running_since = time(0);
-    }catch(...) {
+    } catch(...) {
         return -1;
     }
 return 0;
@@ -110,11 +110,11 @@ PumpOnTimed::PumpOnTimed(unsigned int pumpTime) : PumpCommand() {
      * as not running the pump.
      */
     if (pumpTime > 60) {
-        pump_time = 60;
+        pump_time = 3600;
     } else if (pumpTime <= 0) {
         // Not implemented, but should throw an error.
     } else {
-        pump_time = pumpTime;
+        pump_time = pumpTime * 60;
     }
     
 }
