@@ -15,7 +15,7 @@
 using namespace std;
 
 // Create a global Pump object using wiringPi pin 0 (GPIO 17).
-// This shouldn't stay as a global, its just the only way I could think of 
+// This shouldn't stay as a global, its just the only way I could think of
 // to implement it now.
 Pump pump = Pump(0);
 vector<string> split(char[]);
@@ -25,8 +25,6 @@ int querry_handler(vector<string>);
 int main()
 {
     int socket_fd, client;
-    int buffersize = 1024;
-    char buffer[buffersize];
     bool running = true;
     struct sockaddr_in server_address;
     socklen_t size;
@@ -99,7 +97,7 @@ vector<string> split(char buffer[])
 int querry_handler(vector<string> querry)
 {
     string device = querry[0];
-    if(device == "pump")      //fehler
+    if(device == "pump")
     {
         cout << "Device: " << device << endl;
         return pump.method(querry);
