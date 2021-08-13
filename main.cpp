@@ -99,8 +99,11 @@ int querry_handler(vector<string> querry)
     string device = querry[0];
     if(device == "pump")
     {
-        cout << "Device: " << device << endl;
         return pump.method(querry);
+    }
+    if(device == "server")
+    {
+        return 0;//server::method(querry);
     }
     cout << "No Device found: " << device << endl;
     return -1;
