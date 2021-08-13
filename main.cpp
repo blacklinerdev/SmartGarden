@@ -10,16 +10,13 @@
 #include <unistd.h>
 #include <sstream>
 #include "pump.h"
+#include "devices.h"
 #define PORT 2040
 
 using namespace std;
-
-// Create a global Pump object using wiringPi pin 0 (GPIO 17).
-// This shouldn't stay as a global, its just the only way I could think of
-// to implement it now.
 Pump pump = Pump(0);
 vector<string> split(char[]);
-void init(int&, struct sockaddr_in&, socklen_t&);
+void init_socket(int&, struct sockaddr_in&, socklen_t&);
 int querry_handler(vector<string>);
 
 int main()
@@ -29,8 +26,8 @@ int main()
     struct sockaddr_in server_address;
     socklen_t size;
 
-    // init socket
-    init(socket_fd, server_address, size);
+    // initialize
+    init_socket(socket_fd, server_address, size);
 
     //listening
     while(running)
@@ -63,7 +60,7 @@ int main()
         send(client, response, responsesize, 0);
     }
 }
-void init(int& socket_fd, struct sockaddr_in& server_address, socklen_t& size)
+void init_socket(int& socket_fd, struct sockaddr_in& server_address, socklen_t& size)
 {
     socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(socket_fd < 0)
@@ -99,8 +96,11 @@ int querry_handler(vector<string> querry)
     string device = querry[0];
     if(device == "pump")
     {
-        cout << "Device: " << device << endl;
         return pump.method(querry);
+    }
+    if(device == "server")
+    {
+        return 0;//server::method(querry);
     }
     cout << "No Device found: " << device << endl;
     return -1;
