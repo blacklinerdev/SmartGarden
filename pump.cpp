@@ -1,6 +1,5 @@
 #include "pump.h"
 
-<<<<<<< HEAD:src/pump.cpp
 Pump::Pump(int pin)
 {
     Pump::pin = pin;
@@ -68,32 +67,7 @@ bool Pump::is_running()
     int state;
     try
     {
-        state = 0;//state = digitalRead(pin);
+        state = digitalRead(pin);
     } catch(...) { return false;}
     return state;
 }
-=======
-#include <vector>
-#include <string>
-#include <sstream>
-#include <iostream>
-#include "wiringPi.h"
-
-using namespace std;
-
-class Pump {
-
-    private:
-        int pin = -1;
-        int off();
-        int on();
-        int on(int sec);
-
-    public:
-        Pump(int pin);
-        int method(vector<string> querry);
-        bool is_running();
-};
-
-#endif // PUMP_H_
->>>>>>> pump:pump.h

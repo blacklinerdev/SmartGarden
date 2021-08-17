@@ -1,5 +1,9 @@
 # depslib dependency file v1.0
+<<<<<<< HEAD
 1629232590 source:/home/leroy/Projekte/SmartGarden/main.cpp
+=======
+1628878386 source:/home/leroy/Projekte/SmartGarden/main.cpp
+>>>>>>> pump
 	<iostream>
 	<cstring>
 	<string>
@@ -18,13 +22,18 @@
 	<sstream>
 	<queue>
 
+<<<<<<< HEAD
 1629132789 /home/leroy/Projekte/SmartGarden/pump.h
+=======
+1628878728 /home/leroy/Projekte/SmartGarden/pump.h
+>>>>>>> pump
 	<vector>
 	<string>
 	<sstream>
 	<iostream>
 	"wiringPi.h"
 
+<<<<<<< HEAD
 1629133226 source:/home/leroy/Projekte/SmartGarden/pump.cpp
 	"pump.h"
 
@@ -42,5 +51,8 @@
 	"wiringPi.h"
 
 1629133226 source:/home/leroy/Projekte/SmartGarden/src/pump.cpp
+=======
+1628878913 source:/home/leroy/Projekte/SmartGarden/pump.cpp
+>>>>>>> pump
 	"pump.h"
 
